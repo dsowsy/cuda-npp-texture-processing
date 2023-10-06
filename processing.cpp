@@ -252,7 +252,7 @@ int main(int argc, char *argv[]) {
     calculate_metrics<<<blocks, 256>>>(d_histogram, d_complexity, d_entropy, histSize);
     normalize_and_average<<<1, 1>>>(d_complexity, d_entropy, d_average);
     */
-    
+
     int width = oHostDst.width();
     int height = oHostDst.height();
 
@@ -263,7 +263,7 @@ int main(int argc, char *argv[]) {
 
 
    // Convert npp::Image to host array
-    convertNppImageToHostArray(nppImage, h_gray_image);
+    convertNppImageToHostArray(oHostDst, h_gray_image);
 
     apply_jet_colormap_wrapper(h_gray_image, h_rgb_image, width, height);
 
