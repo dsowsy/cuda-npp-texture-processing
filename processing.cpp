@@ -89,6 +89,11 @@ void processImage(const std::string& inputFilePath, const std::string& outputFil
     npp::ImageCPU_8u_C1 oHostSrc;
     // Load gray-scale image from disk
     npp::loadImage(inputFilePath, oHostSrc);
+
+
+    std::cout << "Loaded image: " << inputFilePath << " with dimensions: "
+              << oHostSrc.width() << "x" << oHostSrc.height() << std::endl;
+
     // Declare a device image and copy construct from the host image,
     // i.e. upload host to device
     npp::ImageNPP_8u_C1 oDeviceSrc(oHostSrc);
@@ -151,6 +156,12 @@ int main(int argc, char *argv[]) {
     for (const auto& entry : std::filesystem::directory_iterator("./data")) {
         if (entry.is_regular_file()) {
             std::string inputFilePath = entry.path().string();
+
+            if (!std::filesystem::exists(inputFilePath)) {
+              std::cerr << "File does not exist: " << inputFilePath << std::endl;
+              continue;  // skip to next iteration
+            }
+
             std::string outputFilePath = inputFilePath.substr(0, inputFilePath.find_last_of('.')) + "_processed.png";
             processFile(inputFilePath, outputFilePath);
             cudaDeviceSynchronize();  // Ensure all CUDA operations are complete
