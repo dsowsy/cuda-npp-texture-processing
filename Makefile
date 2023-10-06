@@ -310,9 +310,9 @@ endif
 
 ALL_CCFLAGS += --threads 0 --std=c++11 -Wno-deprecated-gpu-targets
 
-INCLUDES += -I./Common/UtilNPP
+INCLUDES += -I./Common/UtilNPP /usr/include/opencv4
 
-LIBRARIES += -lnppisu_static -lnppif_static -lnppc_static -lculibos -lfreeimage
+LIBRARIES += -lnppisu_static -lnppif_static -lnppc_static -lculibos -lfreeimage -lopencv_core -lopencv_imgcodecs -lopencv_highgui
 
 # Attempt to compile a minimal application linked against FreeImage. If a.out exists, FreeImage is properly set up.
 $(shell echo "#include \"FreeImage.h\"" > test.c; echo "int main() { return 0; }" >> test.c ; $(NVCC) $(ALL_CCFLAGS) $(INCLUDES) $(ALL_LDFLAGS) $(LIBRARIES) -l freeimage test.c)

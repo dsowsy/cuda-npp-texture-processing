@@ -47,6 +47,7 @@
 #include <helper_cuda.h>
 #include <helper_string.h>
 
+#include <opencv2/opencv.hpp>
 
 bool printfNPPinfo(int argc, char *argv[]) {
   const NppLibraryVersion *libVer = nppGetLibVersion();
@@ -168,7 +169,12 @@ int main(int argc, char *argv[]) {
     // and copy the device result data into it
     oDeviceDst.copyTo(oHostDst.data(), oHostDst.pitch());
 
-    saveImage(sResultFilename, oHostDst);
+
+    npp::ImageCPU_8u_C1 nppImage;  // Assume this is your NPP image
+    cv::Mat cvImage(oHostDst.height(), oHostDst.width(), CV_8UC1, oHostDst.data(), oHostDst.pitch());
+    cv::imwrite(sResultFilename cvImage);
+
+    // saveImage(sResultFilename, oHostDst);
     std::cout << "Saved image: " << sResultFilename << std::endl;
 
     nppiFree(oDeviceSrc.data());
