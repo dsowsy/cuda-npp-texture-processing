@@ -46,7 +46,7 @@ __global__ void apply_jet_colormap(const float* gray_image, float* rgb_image, in
 }
 
 // Your host function to launch the CUDA kernel:
-__global__ void apply_jet_colormap_host(const float* gray_image, float* rgb_image, int width, int height) {
+void apply_jet_colormap_host(const float* gray_image, float* rgb_image, int width, int height) {
     dim3 block_dim(16, 16);
     dim3 grid_dim((width + block_dim.x - 1) / block_dim.x, (height + block_dim.y - 1) / block_dim.y);
 
