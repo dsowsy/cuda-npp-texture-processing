@@ -282,7 +282,7 @@ ALL_LDFLAGS += $(addprefix -Xlinker ,$(LDFLAGS))
 ALL_LDFLAGS += $(addprefix -Xlinker ,$(EXTRA_LDFLAGS))
 
 # Common includes and paths for CUDA
-INCLUDES  := -I../../../Common
+INCLUDES  := -I./Common
 LIBRARIES :=
 
 ################################################################################
@@ -313,7 +313,7 @@ endif
 
 ALL_CCFLAGS += --threads 0 --std=c++11 -Wno-deprecated-gpu-targets
 
-INCLUDES += -I../../../Common/UtilNPP
+INCLUDES += -I./Common/UtilNPP
 
 LIBRARIES += -lnppisu_static -lnppif_static -lnppc_static -lculibos -lfreeimage
 
@@ -336,30 +336,28 @@ endif
 # Target rules
 all: build
 
-build: processing
+build: processing.exe
 
 check.deps:
 ifeq ($(SAMPLE_ENABLED),0)
-	@echo "Sample will be waived due to the above missing dependencies"
+    @echo "Sample will be waived due to the above missing dependencies"
 else
-	@echo "Sample is ready - all dependencies have been met"
+    @echo "Sample is ready - all dependencies have been met"
 endif
 
 processing.o:processing.cpp
-	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
+    $(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
 
 processing: processing.o
-	$(EXEC) $(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
-	$(EXEC) mkdir -p ../../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
-	$(EXEC) cp $@ ../../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
+    $(EXEC) $(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
 
 run: build
-	$(EXEC) ./processing.exe
+    $(EXEC) ./processing.exe
 
 testrun: build
 
 clean:
-	rm -f processing processing.o
-	rm -rf ../../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)/processing
+    rm -f processing processing.o
+    rm -rf ../../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)/processing
 
 clobber: clean
