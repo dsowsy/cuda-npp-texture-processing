@@ -168,7 +168,7 @@ void processImage(const std::string& inputFilePath, const std::string& outputFil
     delete[] h_gray_image;
 
     nppiFree(oDeviceSrc.data());
-    nppiFree(oDeviceDst.data());
+    // nppiFree(oDeviceDst.data());
 }
 
 void processFile(const std::string& inputFilePath, const std::string& outputFilePath) {
