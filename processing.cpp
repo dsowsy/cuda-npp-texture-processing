@@ -299,6 +299,7 @@ int main(int argc, char *argv[]) {
     cudaMemset(d_entropy, 0, sizeof(float));
     
     // Launch kernels
+    /*
     int histSize = 256;
     int blocks = (histSize + 255) / 256;
     calculate_metrics<<<blocks, 256>>>(d_histogram, d_complexity, d_entropy, histSize);
@@ -306,7 +307,7 @@ int main(int argc, char *argv[]) {
     
     int width = oHostDst.width();
     int height = oHostDst.height();
-
+    */
 
     // Allocate memory for the grayscale image on the host
     float* h_gray_image = new float[width * height];
