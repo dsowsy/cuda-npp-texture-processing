@@ -310,7 +310,7 @@ endif
 
 ALL_CCFLAGS += --threads 0 --std=c++11 -Wno-deprecated-gpu-targets
 
-INCLUDES += -I./Common/UtilNPP /usr/include/opencv4
+INCLUDES += -I./Common/UtilNPP /usr/include/opencv4/opencv2
 
 LIBRARIES += -lnppisu_static -lnppif_static -lnppc_static -lculibos -lfreeimage -lopencv_core -lopencv_imgcodecs -lopencv_highgui
 
