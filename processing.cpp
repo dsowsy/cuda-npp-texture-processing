@@ -64,32 +64,6 @@ void convertNppImageToHostArray(const npp::ImageCPU_8u_C1 &nppImage, float* h_gr
     }
 }
 
-/*
-__global__ void calculate_metrics(float* histogram, float* complexity, float* entropy, int histSize) {
-    int idx = threadIdx.x + blockIdx.x * blockDim.x;
-    if (idx < histSize) {
-        // Assume totalPixels is the total number of pixels in the image
-        float probability = histogram[idx] / totalPixels;
-        
-        // Histogram Complexity: Assume a simple measure like the sum of squared bin values
-        atomicAdd(complexity, histogram[idx] * histogram[idx]);
-        
-        // Entropy
-        if (probability > 0)
-            atomicAdd(entropy, -probability * log2f(probability));
-    }
-}
-
-__global__ void normalize_and_average(float* complexity, float* entropy, float* average) {
-    // Normalize (assuming maxComplexity and maxEntropy are the maximum possible values)
-    *complexity /= maxComplexity;
-    *entropy /= maxEntropy;
-    
-    // Average
-    *average = (*complexity + *entropy) / 2.0f;
-}
-*/
-
 bool printfNPPinfo(int argc, char *argv[]) {
   const NppLibraryVersion *libVer = nppGetLibVersion();
 
@@ -118,29 +92,6 @@ void processImage(const std::string& inputFilePath, const std::string& outputFil
     // Declare a device image and copy construct from the host image,
     // i.e. upload host to device
     npp::ImageNPP_8u_C1 oDeviceSrc(oHostSrc);
-
-    // Create struct with box-filter mask size
-    NppiSize oMaskSize = {5, 5};
-    NppiSize oSrcSize = {(int)oDeviceSrc.width(), (int)oDeviceSrc.height()};
-    NppiPoint oSrcOffset = {0, 0};
-    // Create struct with ROI size
-    NppiSize oSizeROI = {(int)oDeviceSrc.width(), (int)oDeviceSrc.height()};
-    // Allocate device image of appropriately reduced size
-    npp::ImageNPP_8u_C1 oDeviceDst(oSizeROI.width, oSizeROI.height);
-    // Set anchor point inside the mask to (oMaskSize.width / 2,
-    // oMaskSize.height / 2) It should round down when odd
-    NppiPoint oAnchor = {oMaskSize.width / 2, oMaskSize.height / 2};
-
-    // Run box filter
-    // NPP_CHECK_NPP(nppiFilterBoxBorder_8u_C1R(
-    //    oDeviceSrc.data(), oDeviceSrc.pitch(), oSrcSize, oSrcOffset,
-    //    oDeviceDst.data(), oDeviceDst.pitch(), oSizeROI, oMaskSize, oAnchor,
-    //    NPP_BORDER_REPLICATE));
-
-    // Declare a host image for the result
-    // npp::ImageCPU_8u_C1 oHostDst(oDeviceDst.size());
-    // And copy the device result data into it
-    // oDeviceDst.copyTo(oHostDst.data(), oHostDst.pitch());
 
     int width = oHostSrc.width();
     int height = oHostSrc.height();
