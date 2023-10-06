@@ -1,5 +1,5 @@
 // jet_functions.cu
-
+#include <stdio.h>
 #include "jet_functions.h"
 
 __device__ void jet_colormap(float gray_value, float &r, float &g, float &b) {
