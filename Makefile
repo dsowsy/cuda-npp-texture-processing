@@ -357,7 +357,7 @@ run: build
 testrun: build
 
 clean:
-    rm -f processing processing.o
-    rm -rf ../../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)/processing
+    rm -f processing.exe processing.o
+    rm -rf ../../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)/processing.exe
 
 clobber: clean
