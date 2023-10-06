@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
 
     npp::ImageCPU_8u_C1 nppImage;  // Assume this is your NPP image
     cv::Mat cvImage(oHostDst.height(), oHostDst.width(), CV_8UC1, oHostDst.data(), oHostDst.pitch());
-    cv::imwrite(sResultFilename cvImage);
+    cv::imwrite(sResultFilename, cvImage);
 
     // saveImage(sResultFilename, oHostDst);
     std::cout << "Saved image: " << sResultFilename << std::endl;
