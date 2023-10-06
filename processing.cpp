@@ -91,13 +91,14 @@ __global__ void apply_jet_colormap(const float* gray_image, float* rgb_image, in
     }
 }
 
+/* 
 void apply_jet_colormap(const float* gray_image, float* rgb_image, int width, int height) {
     dim3 block_dim(16, 16);
     dim3 grid_dim((width + block_dim.x - 1) / block_dim.x, (height + block_dim.y - 1) / block_dim.y);
 
     apply_jet_colormap<<<grid_dim, block_dim>>>(gray_image, rgb_image, width, height);
     cudaDeviceSynchronize();
-}
+} */
 
 void apply_jet_colormap_wrapper(const float* h_gray_image, float* h_rgb_image, int width, int height) {
     // Allocate memory for the grayscale image on the device
@@ -127,7 +128,7 @@ void apply_jet_colormap_wrapper(const float* h_gray_image, float* h_rgb_image, i
 void convertNppImageToHostArray(const npp::ImageCPU_8u_C1 &nppImage, float* h_gray_image) {
     int width = nppImage.width();
     int height = nppImage.height();
-    Npp8u* pSrc = nppImage.data();
+    const Npp8u* pSrc = nppImage.data();
     int srcStep = nppImage.pitch();
 
     for (int y = 0; y < height; ++y) {
@@ -138,7 +139,7 @@ void convertNppImageToHostArray(const npp::ImageCPU_8u_C1 &nppImage, float* h_gr
     }
 }
 
-
+/*
 __global__ void calculate_metrics(float* histogram, float* complexity, float* entropy, int histSize) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx < histSize) {
@@ -162,7 +163,7 @@ __global__ void normalize_and_average(float* complexity, float* entropy, float* 
     // Average
     *average = (*complexity + *entropy) / 2.0f;
 }
-
+*/
 
 bool printfNPPinfo(int argc, char *argv[]) {
   const NppLibraryVersion *libVer = nppGetLibVersion();
@@ -328,7 +329,7 @@ int main(int argc, char *argv[]) {
 
     delete [] h_rgb_image;
     delete [] h_gray_image;
-    
+
     // cv::Mat cvImage(height, width, CV_8UC1, oHostDst.data(), oHostDst.pitch());
     // cv::imwrite(sResultFilename, cvImage);
 
