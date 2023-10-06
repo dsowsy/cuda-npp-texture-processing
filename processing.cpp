@@ -132,18 +132,18 @@ void processImage(const std::string& inputFilePath, const std::string& outputFil
     NppiPoint oAnchor = {oMaskSize.width / 2, oMaskSize.height / 2};
 
     // Run box filter
-    NPP_CHECK_NPP(nppiFilterBoxBorder_8u_C1R(
-        oDeviceSrc.data(), oDeviceSrc.pitch(), oSrcSize, oSrcOffset,
-        oDeviceDst.data(), oDeviceDst.pitch(), oSizeROI, oMaskSize, oAnchor,
-        NPP_BORDER_REPLICATE));
+    // NPP_CHECK_NPP(nppiFilterBoxBorder_8u_C1R(
+    //    oDeviceSrc.data(), oDeviceSrc.pitch(), oSrcSize, oSrcOffset,
+    //    oDeviceDst.data(), oDeviceDst.pitch(), oSizeROI, oMaskSize, oAnchor,
+    //    NPP_BORDER_REPLICATE));
 
     // Declare a host image for the result
-    npp::ImageCPU_8u_C1 oHostDst(oDeviceDst.size());
+    // npp::ImageCPU_8u_C1 oHostDst(oDeviceDst.size());
     // And copy the device result data into it
-    oDeviceDst.copyTo(oHostDst.data(), oHostDst.pitch());
+    // oDeviceDst.copyTo(oHostDst.data(), oHostDst.pitch());
 
-    int width = oHostDst.width();
-    int height = oHostDst.height();
+    int width = oHostSrc.width();
+    int height = oHostSrc.height();
 
     // Allocate memory for the grayscale image on the host
     float* h_gray_image = new float[width * height];
@@ -151,7 +151,7 @@ void processImage(const std::string& inputFilePath, const std::string& outputFil
     float* h_rgb_image = new float[width * height * 3];
 
     // Convert npp::Image to host array
-    convertNppImageToHostArray(oHostDst, h_gray_image);
+    convertNppImageToHostArray(oHostSrc, h_gray_image);
 
     // Apply the Jet colormap
     apply_jet_colormap_wrapper(h_gray_image, h_rgb_image, width, height);
