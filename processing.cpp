@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
     if (checkCmdLineFlag(argc, (const char **)argv, "input")) {
       getCmdLineArgumentString(argc, (const char **)argv, "input", &filePath);
     } else {
-      filePath = sdkFindFilePath("teapot512.pgm", argv[0]);
+      filePath = sdkFindFilePath("1.1.01.png", argv[0]);
       std::cout << "Filepath: " << filePath << std::endl;
     }
 
