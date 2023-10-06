@@ -53,3 +53,40 @@ void apply_jet_colormap_host(const float* gray_image, float* rgb_image, int widt
     apply_jet_colormap<<<grid_dim, block_dim>>>(gray_image, rgb_image, width, height);
     cudaDeviceSynchronize();
 }
+
+
+void apply_jet_colormap_wrapper(const float* h_gray_image, float* h_rgb_image, int width, int height) {
+    // Allocate memory for the grayscale image on the device
+    float* d_gray_image;
+    cudaMalloc(&d_gray_image, width * height * sizeof(float));
+
+    // Copy grayscale image data to the device
+    cudaMemcpy(d_gray_image, h_gray_image, width * height * sizeof(float), cudaMemcpyHostToDevice);
+
+    // Allocate memory for the RGB image on the device
+    float* d_rgb_image;
+    cudaMalloc(&d_rgb_image, width * height * 3 * sizeof(float));
+
+    // Define block and grid dimensions
+    dim3 block_dim(16, 16);
+    dim3 grid_dim((width + block_dim.x - 1) / block_dim.x, (height + block_dim.y - 1) / block_dim.y);
+
+    // Apply the Jet colormap
+    apply_jet_colormap<<<grid_dim, block_dim>>>(d_gray_image, d_rgb_image, width, height);
+
+    // Check for any errors during the kernel launch
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        printf("CUDA Error: %s\n", cudaGetErrorString(err));
+    }
+
+    // Synchronize device
+    cudaDeviceSynchronize();
+
+    // Copy RGB image data back to the host
+    cudaMemcpy(h_rgb_image, d_rgb_image, width * height * 3 * sizeof(float), cudaMemcpyDeviceToHost);
+
+    // Free allocated memory on the device
+    cudaFree(d_gray_image);
+    cudaFree(d_rgb_image);
+}
