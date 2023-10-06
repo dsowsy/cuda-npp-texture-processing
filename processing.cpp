@@ -84,8 +84,8 @@ int main(int argc, char *argv[]) {
     if (checkCmdLineFlag(argc, (const char **)argv, "input")) {
       getCmdLineArgumentString(argc, (const char **)argv, "input", &filePath);
     } else {
-      std::cout << "Filepath: " << filePath << std::endl;
       filePath = sdkFindFilePath("teapot512.pgm", argv[0]);
+      std::cout << "Filepath: " << filePath << std::endl;
     }
 
 
@@ -94,7 +94,8 @@ int main(int argc, char *argv[]) {
     } else {
       sFilename = "teapot512.pgm";
     }
-    std::cout << "Filepath: " << filePath << std::endl;
+
+      std::cout << "sFilename: " << sFilename << std::endl;
 
     // if we specify the filename at the command line, then we only test
     // sFilename[0].
