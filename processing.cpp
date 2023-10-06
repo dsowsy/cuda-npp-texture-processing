@@ -59,8 +59,21 @@ void apply_jet_colormap_wrapper(const float* h_gray_image, float* h_rgb_image, i
     float* d_rgb_image;
     cudaMalloc(&d_rgb_image, width * height * 3 * sizeof(float));
 
+    // Define block and grid dimensions
+    dim3 block_dim(16, 16);
+    dim3 grid_dim((width + block_dim.x - 1) / block_dim.x, (height + block_dim.y - 1) / block_dim.y);
+
     // Apply the Jet colormap
-    apply_jet_colormap(d_gray_image, d_rgb_image, width, height);
+    apply_jet_colormap<<<grid_dim, block_dim>>>(d_gray_image, d_rgb_image, width, height);
+
+    // Check for any errors during the kernel launch
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        printf("CUDA Error: %s\n", cudaGetErrorString(err));
+    }
+
+    // Synchronize device
+    cudaDeviceSynchronize();
 
     // Copy RGB image data back to the host
     cudaMemcpy(h_rgb_image, d_rgb_image, width * height * 3 * sizeof(float), cudaMemcpyDeviceToHost);
