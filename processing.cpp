@@ -44,9 +44,9 @@
 #include <helper_cuda.h>
 #include <helper_string.h>
 #include <opencv2/opencv.hpp>
+#include <filesystem>
 
 #include "jet_functions.h"
-
 
 
 // Function to convert npp::Image to a host array
@@ -110,126 +110,37 @@ bool printfNPPinfo(int argc, char *argv[]) {
   return bVal;
 }
 
-int main(int argc, char *argv[]) {
-  printf("%s Starting...\n\n", argv[0]);
-
-  try {
-    std::string sFilename;
-    char *filePath;
-
-    findCudaDevice(argc, (const char **)argv);
-
-    if (printfNPPinfo(argc, argv) == false) {
-      exit(EXIT_SUCCESS);
-    }
-
-    if (checkCmdLineFlag(argc, (const char **)argv, "input")) {
-      getCmdLineArgumentString(argc, (const char **)argv, "input", &filePath);
-    } else {
-      filePath = sdkFindFilePath("1.1.01.png", argv[0]);
-      std::cout << "Filepath: " << filePath << std::endl;
-    }
-
-
-    if (filePath) {
-      sFilename = filePath;
-    } else {
-      sFilename = "teapot512.pgm";
-    }
-
-      std::cout << "sFilename: " << sFilename << std::endl;
-
-    // if we specify the filename at the command line, then we only test
-    // sFilename[0].
-    int file_errors = 0;
-    std::ifstream infile(sFilename.data(), std::ifstream::in);
-
-    if (infile.good()) {
-      std::cout << "processing opened: <" << sFilename.data()
-                << "> successfully!" << std::endl;
-      file_errors = 0;
-      infile.close();
-    } else {
-      std::cout << "processing unable to open: <" << sFilename.data() << ">"
-                << std::endl;
-      file_errors++;
-      infile.close();
-    }
-
-    if (file_errors > 0) {
-      exit(EXIT_FAILURE);
-    }
-
-    std::string sResultFilename = sFilename;
-
-    std::string::size_type dot = sResultFilename.rfind('.');
-
-    if (dot != std::string::npos) {
-      sResultFilename = sResultFilename.substr(0, dot);
-    }
-
-    sResultFilename += "_processing.png";
-
-    if (checkCmdLineFlag(argc, (const char **)argv, "output")) {
-      char *outputFilePath;
-      getCmdLineArgumentString(argc, (const char **)argv, "output",
-                               &outputFilePath);
-      sResultFilename = outputFilePath;
-    }
-
-    // declare a host image object for an 8-bit grayscale image
+void processImage(const std::string& inputFilePath, const std::string& outputFilePath) {
+    // Declare a host image object for an 8-bit grayscale image
     npp::ImageCPU_8u_C1 oHostSrc;
-    // load gray-scale image from disk
-    npp::loadImage(sFilename, oHostSrc);
-    // declare a device image and copy construct from the host image,
+    // Load gray-scale image from disk
+    npp::loadImage(inputFilePath, oHostSrc);
+    // Declare a device image and copy construct from the host image,
     // i.e. upload host to device
     npp::ImageNPP_8u_C1 oDeviceSrc(oHostSrc);
 
-    // create struct with box-filter mask size
+    // Create struct with box-filter mask size
     NppiSize oMaskSize = {5, 5};
-
     NppiSize oSrcSize = {(int)oDeviceSrc.width(), (int)oDeviceSrc.height()};
     NppiPoint oSrcOffset = {0, 0};
-
-    // create struct with ROI size
+    // Create struct with ROI size
     NppiSize oSizeROI = {(int)oDeviceSrc.width(), (int)oDeviceSrc.height()};
-    // allocate device image of appropriately reduced size
+    // Allocate device image of appropriately reduced size
     npp::ImageNPP_8u_C1 oDeviceDst(oSizeROI.width, oSizeROI.height);
-    // set anchor point inside the mask to (oMaskSize.width / 2,
+    // Set anchor point inside the mask to (oMaskSize.width / 2,
     // oMaskSize.height / 2) It should round down when odd
     NppiPoint oAnchor = {oMaskSize.width / 2, oMaskSize.height / 2};
 
-    // run box filter
+    // Run box filter
     NPP_CHECK_NPP(nppiFilterBoxBorder_8u_C1R(
         oDeviceSrc.data(), oDeviceSrc.pitch(), oSrcSize, oSrcOffset,
         oDeviceDst.data(), oDeviceDst.pitch(), oSizeROI, oMaskSize, oAnchor,
         NPP_BORDER_REPLICATE));
 
-    // declare a host image for the result
+    // Declare a host image for the result
     npp::ImageCPU_8u_C1 oHostDst(oDeviceDst.size());
-    // and copy the device result data into it
+    // And copy the device result data into it
     oDeviceDst.copyTo(oHostDst.data(), oHostDst.pitch());
-
-    // Assume histogram is already calculated and is in device memory
-    float* d_histogram;
-    float *d_complexity, *d_entropy, *d_average;
-    
-    // Allocate memory for metrics
-    cudaMalloc(&d_complexity, sizeof(float));
-    cudaMalloc(&d_entropy, sizeof(float));
-    cudaMalloc(&d_average, sizeof(float));
-    
-    // Initialize metrics to 0
-    cudaMemset(d_complexity, 0, sizeof(float));
-    cudaMemset(d_entropy, 0, sizeof(float));
-    
-    // Launch kernels
-    /*
-    int histSize = 256;
-    int blocks = (histSize + 255) / 256;
-    calculate_metrics<<<blocks, 256>>>(d_histogram, d_complexity, d_entropy, histSize);
-    normalize_and_average<<<1, 1>>>(d_complexity, d_entropy, d_average);
-    */
 
     int width = oHostDst.width();
     int height = oHostDst.height();
@@ -239,10 +150,10 @@ int main(int argc, char *argv[]) {
     // Allocate memory for the RGB image on the host
     float* h_rgb_image = new float[width * height * 3];
 
-
-   // Convert npp::Image to host array
+    // Convert npp::Image to host array
     convertNppImageToHostArray(oHostDst, h_gray_image);
 
+    // Apply the Jet colormap
     apply_jet_colormap_wrapper(h_gray_image, h_rgb_image, width, height);
 
     cv::Mat cvImage(height, width, CV_32FC3, h_rgb_image);
@@ -251,34 +162,46 @@ int main(int argc, char *argv[]) {
     cvImage.convertTo(cvImage, CV_8UC3, 255.0);
 
     // Save or display the image
-    cv::imwrite(sResultFilename, cvImage);
+    cv::imwrite(outputFilePath, cvImage);
 
-    delete [] h_rgb_image;
-    delete [] h_gray_image;
-
-    // cv::Mat cvImage(height, width, CV_8UC1, oHostDst.data(), oHostDst.pitch());
-    // cv::imwrite(sResultFilename, cvImage);
-
-
-    std::cout << "Saved processed image: " << sResultFilename << std::endl;
+    delete[] h_rgb_image;
+    delete[] h_gray_image;
 
     nppiFree(oDeviceSrc.data());
     nppiFree(oDeviceDst.data());
-
-    exit(EXIT_SUCCESS);
-  } catch (npp::Exception &rException) {
-    std::cerr << "Program error! The following exception occurred: \n";
-    std::cerr << rException << std::endl;
-    std::cerr << "Aborting." << std::endl;
-
-    exit(EXIT_FAILURE);
-  } catch (...) {
-    std::cerr << "Program error! An unknow type of exception occurred. \n";
-    std::cerr << "Aborting." << std::endl;
-
-    exit(EXIT_FAILURE);
-    return -1;
-  }
-
-  return 0;
 }
+
+void processFile(const std::string& inputFilePath, const std::string& outputFilePath) {
+    try {
+        processImage(inputFilePath, outputFilePath);  // Call to processImage with file paths
+        std::cout << "Saved processed image: " << outputFilePath << std::endl;
+    } catch (npp::Exception &rException) {
+        std::cerr << "Program error! The following exception occurred: \n";
+        std::cerr << rException << std::endl;
+        std::cerr << "Aborting." << std::endl;
+        exit(EXIT_FAILURE);
+    } catch (...) {
+        std::cerr << "Program error! An unknown type of exception occurred. \n";
+        std::cerr << "Aborting." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+int main(int argc, char *argv[]) {
+    printf("%s Starting...\n\n", argv[0]);
+
+    findCudaDevice(argc, (const char **)argv);
+
+    if (printfNPPinfo(argc, argv) == false) {
+        exit(EXIT_SUCCESS);
+    }
+
+    std::vector<std::string> files = getFilesInDirectory("./data");
+    for (const auto& file : files) {
+        processFile(file);
+    }
+
+    return 0;
+}
+
