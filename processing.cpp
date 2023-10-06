@@ -197,9 +197,12 @@ int main(int argc, char *argv[]) {
         exit(EXIT_SUCCESS);
     }
 
-    std::vector<std::string> files = getFilesInDirectory("./data");
-    for (const auto& file : files) {
-        processFile(file);
+    for (const auto& entry : std::filesystem::directory_iterator("./data")) {
+        if (entry.is_regular_file()) {
+            std::string inputFilePath = entry.path().string();
+            std::string outputFilePath = inputFilePath.substr(0, inputFilePath.find_last_of('.')) + "_processed.png";
+            processFile(inputFilePath, outputFilePath);
+        }
     }
 
     return 0;
