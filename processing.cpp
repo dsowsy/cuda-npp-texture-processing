@@ -49,6 +49,121 @@
 
 #include <opencv2/opencv.hpp>
 
+__device__ void jet_colormap(float gray_value, float &r, float &g, float &b) {
+    if (gray_value < 0.125) {
+        r = 0.0;
+        g = 0.0;
+        b = 4.0 * (gray_value + 0.125);
+    } else if (gray_value < 0.375) {
+        r = 0.0;
+        g = 4.0 * (gray_value - 0.125);
+        b = 1.0;
+    } else if (gray_value < 0.625) {
+        r = 4.0 * (gray_value - 0.375);
+        g = 1.0;
+        b = 1.0 - 4.0 * (gray_value - 0.375);
+    } else if (gray_value < 0.875) {
+        r = 1.0;
+        g = 1.0 - 4.0 * (gray_value - 0.625);
+        b = 0.0;
+    } else {
+        r = 1.0 - 4.0 * (gray_value - 0.875);
+        g = 0.0;
+        b = 0.0;
+    }
+}
+
+__global__ void apply_jet_colormap(const float* gray_image, float* rgb_image, int width, int height) {
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (x < width && y < height) {
+        int gray_idx = y * width + x;
+        int rgb_idx = gray_idx * 3;
+
+        float gray_value = gray_image[gray_idx];
+        float r, g, b;
+        jet_colormap(gray_value, r, g, b);
+
+        rgb_image[rgb_idx + 0] = r;
+        rgb_image[rgb_idx + 1] = g;
+        rgb_image[rgb_idx + 2] = b;
+    }
+}
+
+void apply_jet_colormap(const float* gray_image, float* rgb_image, int width, int height) {
+    dim3 block_dim(16, 16);
+    dim3 grid_dim((width + block_dim.x - 1) / block_dim.x, (height + block_dim.y - 1) / block_dim.y);
+
+    apply_jet_colormap<<<grid_dim, block_dim>>>(gray_image, rgb_image, width, height);
+    cudaDeviceSynchronize();
+}
+
+void apply_jet_colormap_wrapper(const float* h_gray_image, float* h_rgb_image, int width, int height) {
+    // Allocate memory for the grayscale image on the device
+    float* d_gray_image;
+    cudaMalloc(&d_gray_image, width * height * sizeof(float));
+
+    // Copy grayscale image data to the device
+    cudaMemcpy(d_gray_image, h_gray_image, width * height * sizeof(float), cudaMemcpyHostToDevice);
+
+    // Allocate memory for the RGB image on the device
+    float* d_rgb_image;
+    cudaMalloc(&d_rgb_image, width * height * 3 * sizeof(float));
+
+    // Apply the Jet colormap
+    apply_jet_colormap(d_gray_image, d_rgb_image, width, height);
+
+    // Copy RGB image data back to the host
+    cudaMemcpy(h_rgb_image, d_rgb_image, width * height * 3 * sizeof(float), cudaMemcpyDeviceToHost);
+
+    // Free allocated memory on the device
+    cudaFree(d_gray_image);
+    cudaFree(d_rgb_image);
+}
+
+
+// Function to convert npp::Image to a host array
+void convertNppImageToHostArray(const npp::ImageCPU_8u_C1 &nppImage, float* h_gray_image) {
+    int width = nppImage.width();
+    int height = nppImage.height();
+    Npp8u* pSrc = nppImage.data();
+    int srcStep = nppImage.pitch();
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            int srcIdx = y * srcStep + x;
+            h_gray_image[y * width + x] = static_cast<float>(pSrc[srcIdx]) / 255.0f;
+        }
+    }
+}
+
+
+__global__ void calculate_metrics(float* histogram, float* complexity, float* entropy, int histSize) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx < histSize) {
+        // Assume totalPixels is the total number of pixels in the image
+        float probability = histogram[idx] / totalPixels;
+        
+        // Histogram Complexity: Assume a simple measure like the sum of squared bin values
+        atomicAdd(complexity, histogram[idx] * histogram[idx]);
+        
+        // Entropy
+        if (probability > 0)
+            atomicAdd(entropy, -probability * log2f(probability));
+    }
+}
+
+__global__ void normalize_and_average(float* complexity, float* entropy, float* average) {
+    // Normalize (assuming maxComplexity and maxEntropy are the maximum possible values)
+    *complexity /= maxComplexity;
+    *entropy /= maxEntropy;
+    
+    // Average
+    *average = (*complexity + *entropy) / 2.0f;
+}
+
+
 bool printfNPPinfo(int argc, char *argv[]) {
   const NppLibraryVersion *libVer = nppGetLibVersion();
 
@@ -169,13 +284,56 @@ int main(int argc, char *argv[]) {
     // and copy the device result data into it
     oDeviceDst.copyTo(oHostDst.data(), oHostDst.pitch());
 
+    // Assume histogram is already calculated and is in device memory
+    float* d_histogram;
+    float *d_complexity, *d_entropy, *d_average;
+    
+    // Allocate memory for metrics
+    cudaMalloc(&d_complexity, sizeof(float));
+    cudaMalloc(&d_entropy, sizeof(float));
+    cudaMalloc(&d_average, sizeof(float));
+    
+    // Initialize metrics to 0
+    cudaMemset(d_complexity, 0, sizeof(float));
+    cudaMemset(d_entropy, 0, sizeof(float));
+    
+    // Launch kernels
+    int histSize = 256;
+    int blocks = (histSize + 255) / 256;
+    calculate_metrics<<<blocks, 256>>>(d_histogram, d_complexity, d_entropy, histSize);
+    normalize_and_average<<<1, 1>>>(d_complexity, d_entropy, d_average);
+    
+    int width = oHostDst.width();
+    int height = oHostDst.height();
 
-    npp::ImageCPU_8u_C1 nppImage;  // Assume this is your NPP image
-    cv::Mat cvImage(oHostDst.height(), oHostDst.width(), CV_8UC1, oHostDst.data(), oHostDst.pitch());
+
+    // Allocate memory for the grayscale image on the host
+    float* h_gray_image = new float[width * height];
+    // Allocate memory for the RGB image on the host
+    float* h_rgb_image = new float[width * height * 3];
+
+
+   // Convert npp::Image to host array
+    convertNppImageToHostArray(nppImage, h_gray_image);
+
+    apply_jet_colormap_wrapper(h_gray_image, h_rgb_image, width, height);
+
+    cv::Mat cvImage(height, width, CV_32FC3, h_rgb_image);
+
+    // Optional: Convert float values to 8-bit unsigned integer values
+    cvImage.convertTo(cvImage, CV_8UC3, 255.0);
+
+    // Save or display the image
     cv::imwrite(sResultFilename, cvImage);
 
-    // saveImage(sResultFilename, oHostDst);
-    std::cout << "Saved image: " << sResultFilename << std::endl;
+    delete [] h_rgb_image;
+    delete [] h_gray_image;
+    
+    // cv::Mat cvImage(height, width, CV_8UC1, oHostDst.data(), oHostDst.pitch());
+    // cv::imwrite(sResultFilename, cvImage);
+
+
+    std::cout << "Saved processed image: " << sResultFilename << std::endl;
 
     nppiFree(oDeviceSrc.data());
     nppiFree(oDeviceDst.data());
