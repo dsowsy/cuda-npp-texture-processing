@@ -342,7 +342,7 @@ else
 	@echo "Sample is ready - all dependencies have been met"
 endif
 
-processing.o:processing.cpp
+processing.o:processing.cpp jet_functions.cu
 	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
 
 processing: processing.o
