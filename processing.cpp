@@ -103,12 +103,12 @@ int main(int argc, char *argv[]) {
     std::ifstream infile(sFilename.data(), std::ifstream::in);
 
     if (infile.good()) {
-      std::cout << "boxFilterNPP opened: <" << sFilename.data()
+      std::cout << "processing opened: <" << sFilename.data()
                 << "> successfully!" << std::endl;
       file_errors = 0;
       infile.close();
     } else {
-      std::cout << "boxFilterNPP unable to open: <" << sFilename.data() << ">"
+      std::cout << "processing unable to open: <" << sFilename.data() << ">"
                 << std::endl;
       file_errors++;
       infile.close();
@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
       sResultFilename = sResultFilename.substr(0, dot);
     }
 
-    sResultFilename += "_boxFilter.pgm";
+    sResultFilename += "_processing.png";
 
     if (checkCmdLineFlag(argc, (const char **)argv, "output")) {
       char *outputFilePath;
