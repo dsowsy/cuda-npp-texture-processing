@@ -153,6 +153,12 @@ int main(int argc, char *argv[]) {
             std::string inputFilePath = entry.path().string();
             std::string outputFilePath = inputFilePath.substr(0, inputFilePath.find_last_of('.')) + "_processed.png";
             processFile(inputFilePath, outputFilePath);
+            cudaDeviceSynchronize();  // Ensure all CUDA operations are complete
+
+            cudaError_t err = cudaGetLastError();
+            if (err != cudaSuccess) {
+              std::cerr << "CUDA Error: " << cudaGetErrorString(err) << " for file: " << inputFilePath << std::endl;
+            }
         }
     }
 
