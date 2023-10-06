@@ -87,6 +87,8 @@ int main(int argc, char *argv[]) {
       filePath = sdkFindFilePath("teapot512.pgm", argv[0]);
     }
 
+    std::cout << "Filepath: " << filePath << std::endl;
+
     if (filePath) {
       sFilename = filePath;
     } else {
