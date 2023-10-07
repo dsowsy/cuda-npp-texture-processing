@@ -1,4 +1,4 @@
-/* Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+/* /* Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,6 +45,7 @@
 #include <helper_string.h>
 #include <opencv2/opencv.hpp>
 #include <filesystem>
+#include <functional>
 
 #include "jet_functions.h"
 
@@ -127,7 +128,10 @@ void processImage(const std::string& inputFilePath, const std::string& outputFil
     // nppiFree(oDeviceDst.data());
 }
 
-void processFile(const std::string& inputFilePath, const std::string& outputFilePath) {
+void processFile(const std::filesystem::directory_entry &entry){
+    std::string inputFilePath = entry.path().string();
+    std::string outputFilePath = inputFilePath.substr(0, inputFilePath.find_last_of('.')) + "_processed.png";
+
     try {
         processImage(inputFilePath, outputFilePath);  // Call to processImage with file paths
         std::cout << "Saved processed image: " << outputFilePath << std::endl;
@@ -143,6 +147,30 @@ void processFile(const std::string& inputFilePath, const std::string& outputFile
     }
 }
 
+void handleErrors(const std::string &inputFilePath)
+{
+    cudaDeviceSynchronize(); // Ensure all CUDA operations are complete
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess)
+    {
+        std::cerr << "CUDA Error: " << cudaGetErrorString(err) << " for file: " << inputFilePath << std::endl;
+    }
+}
+
+void forEachFile(const std::string &dirPath,
+                 std::function<void(const std::filesystem::directory_entry &)> fileProcessor,
+                 std::function<void(const std::string &)> errorHandler)
+{
+    for (const auto &entry : std::filesystem::directory_iterator(dirPath))
+    {
+        if (entry.is_regular_file())
+        {
+            fileProcessor(entry);
+            errorHandler(entry.path().string());
+        }
+    }
+}
+
 
 int main(int argc, char *argv[]) {
     printf("%s Starting...\n\n", argv[0]);
@@ -153,6 +181,17 @@ int main(int argc, char *argv[]) {
         exit(EXIT_SUCCESS);
     }
 
+
+    /*  
+    std::string inputFilePath = "./data/1.1.02.png";
+    std::string outputFilePath = inputFilePath.substr(0, inputFilePath.find_last_of('.')) + "_processed.png";
+    processFile(inputFilePath, outputFilePath);
+    */
+
+    forEachFile("./data", processFile, handleErrors);
+
+
+    /*
     for (const auto& entry : std::filesystem::directory_iterator("./data")) {
         if (entry.is_regular_file()) {
             std::string inputFilePath = entry.path().string();
@@ -172,7 +211,7 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-
+*/
     return 0;
 }
 
