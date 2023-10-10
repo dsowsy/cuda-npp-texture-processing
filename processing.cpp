@@ -156,19 +156,35 @@ void handleErrors(const std::string &inputFilePath)
     }
 }
 
+
 void forEachFile(const std::string &dirPath,
-                 std::function<void(const std::filesystem::directory_entry &)> fileProcessor,
-                 std::function<void(const std::string &)> errorHandler)
+                 std::function<void(const std::filesystem::directory_entry &)> fileProcessor)
 {
+    // Obtain the count of files in the directory
+    size_t file_count = std::distance(std::filesystem::directory_iterator{dirPath},
+                                       std::filesystem::directory_iterator{});
+    
+    size_t processed_count = 0;
     for (const auto &entry : std::filesystem::directory_iterator(dirPath))
     {
         if (entry.is_regular_file())
         {
             fileProcessor(entry);
-            errorHandler(entry.path().string());
+            ++processed_count;  // Increment the processed file count
+            std::cout << "\rFile " << processed_count << "/" << file_count << std::flush;
         }
     }
+    std::cout << std::endl;  // Move to the next line after processing all files
 }
+
+int main() {
+    forEachFile("/path/to/directory",
+                [](const std::filesystem::directory_entry &entry){
+                    // Your file processing logic here
+                });
+    return 0;
+}
+
 
 
 int main(int argc, char *argv[]) {
