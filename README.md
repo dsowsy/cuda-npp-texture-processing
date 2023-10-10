@@ -9,6 +9,7 @@ Image texture processing in CUDA with NPP - Creating a kernel for OpenCV "jet" s
 This project leverages the USC Viterbi Volume 1: Textures image collection from the provided images.zip file. 
 
 The images, originally in TIFF format, have been converted to PNG for easier handling.
+
 More details about the image collection can be found [here](https://sipi.usc.edu/database/database.php?volume=textures).
 
 1. Initially, all 66 images are loaded into the system as grayscale images using OpenCV's image loading functionality.
