@@ -46,6 +46,7 @@
 #include <opencv2/opencv.hpp>
 #include <filesystem>
 #include <functional>
+#include <unordered_set>
 
 #include "jet_functions.h"
 
@@ -64,6 +65,33 @@ void convertNppImageToHostArray(const npp::ImageCPU_8u_C1 &nppImage, float* h_gr
         }
     }
 }
+void convertMatToImageCPU(const cv::Mat &mat, npp::ImageCPU_8u_C1 &nppImage)
+{
+    // Check if the input Mat is single channel and 8-bit
+    if (mat.channels() != 1 || mat.depth() != CV_8U) {
+        throw std::runtime_error("Input Mat must be a single channel, 8-bit image.");
+    }
+
+    // Create an ImageCPU_8u_C1 object with the same dimensions as the input Mat
+    npp::ImageCPU_8u_C1 tempImage(mat.cols, mat.rows);
+
+    // Get the data pointer and pitch (step) of the input Mat
+    const Npp8u *matData = mat.data;
+    Npp32s matPitch = static_cast<Npp32s>(mat.step);
+
+    // Get the data pointer and pitch of the ImageCPU_8u_C1 object
+    Npp8u *nppData = tempImage.data();
+    Npp32s nppPitch = static_cast<Npp32s>(tempImage.pitch());
+
+    // Copy data from the Mat to the ImageCPU_8u_C1 object, line by line
+    for (int y = 0; y < mat.rows; ++y) {
+        memcpy(nppData + y * nppPitch, matData + y * matPitch, mat.cols * sizeof(Npp8u));
+    }
+
+    // Swap the temporary ImageCPU_8u_C1 object with the output object
+    nppImage.swap(tempImage);
+}
+
 
 bool printfNPPinfo(int argc, char *argv[]) {
   const NppLibraryVersion *libVer = nppGetLibVersion();
@@ -88,24 +116,22 @@ bool printfNPPinfo(int argc, char *argv[]) {
 void processImage(const std::string& inputFilePath, const std::string& outputFilePath) {
     // Declare a host image object for an 8-bit grayscale image
     npp::ImageCPU_8u_C1 oHostSrc;
-    // Load gray-scale image from disk
-    npp::loadImage(inputFilePath, oHostSrc);
-
-
-    std::cout << "Loaded image: " << inputFilePath << " with dimensions: "
-              << oHostSrc.width() << "x" << oHostSrc.height() << std::endl;
+    cv::Mat grayImage = cv::imread(inputFilePath, cv::IMREAD_GRAYSCALE);
+    
+    if (grayImage.empty()) {
+        std::cerr << "Failed to load image: " << inputFilePath << std::endl;
+        return;
+    }
 
     // Declare a device image and copy construct from the host image,
     // i.e. upload host to device
-    npp::ImageNPP_8u_C1 oDeviceSrc(oHostSrc);
+    convertMatToImageCPU(grayImage, oHostSrc);
 
     int width = oHostSrc.width();
     int height = oHostSrc.height();
 
-    // Allocate memory for the grayscale image on the host
-    float* h_gray_image = new float[width * height];
-    // Allocate memory for the RGB image on the host
-    float* h_rgb_image = new float[width * height * 3];
+    float *h_gray_image = new float[width * height * 3];
+    float *h_rgb_image = new float[width * height * 3];
 
     // Convert npp::Image to host array
     convertNppImageToHostArray(oHostSrc, h_gray_image);
@@ -124,7 +150,8 @@ void processImage(const std::string& inputFilePath, const std::string& outputFil
     delete[] h_rgb_image;
     delete[] h_gray_image;
 
-    nppiFree(oDeviceSrc.data());
+    cvImage.deallocate();
+    grayImage.deallocate();
 }
 
 void processFile(const std::filesystem::directory_entry &entry){
@@ -146,25 +173,20 @@ void processFile(const std::filesystem::directory_entry &entry){
     }
 }
 
-
 void forEachFile(const std::string &dirPath,
                  std::function<void(const std::filesystem::directory_entry &)> fileProcessor)
 {
-    // Obtain the count of files in the directory
-    size_t file_count = std::distance(std::filesystem::directory_iterator{dirPath},
-                                       std::filesystem::directory_iterator{});
-    
-    size_t processed_count = 0;
-    for (const auto &entry : std::filesystem::directory_iterator(dirPath))
-    {
-        if (entry.is_regular_file())
-        {
-            fileProcessor(entry);
-            ++processed_count;  // Increment the processed file count
-            std::cout << "\rFile " << processed_count << "/" << file_count << std::flush;
+    // Capture the directory listing once
+    std::vector<std::filesystem::directory_entry> dirListing;
+    for (const auto &entry : std::filesystem::directory_iterator(dirPath)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".png") {
+            dirListing.push_back(entry);
         }
     }
-    std::cout << std::endl;  // Move to the next line after processing all files
+    // Now work off the static list
+    for (const auto &entry : dirListing) {
+        fileProcessor(entry);
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -176,14 +198,6 @@ int main(int argc, char *argv[]) {
         exit(EXIT_SUCCESS);
     }
 
-
-    /*  
-    std::string inputFilePath = "./data/1.1.02.png";
-    std::string outputFilePath = inputFilePath.substr(0, inputFilePath.find_last_of('.')) + "_processed.png";
-    processFile(inputFilePath, outputFilePath);
-    */
-
     forEachFile("./data", processFile);
     return 0;
 }
-
