@@ -36,62 +36,63 @@
 #include <ImageIO.h>
 #include <ImagesCPU.h>
 #include <ImagesNPP.h>
-#include <string.h>
-#include <fstream>
-#include <iostream>
 #include <cuda_runtime.h>
-#include <npp.h>
 #include <helper_cuda.h>
 #include <helper_string.h>
-#include <opencv2/opencv.hpp>
+#include <npp.h>
+#include <string.h>
+
 #include <filesystem>
+#include <fstream>
 #include <functional>
+#include <iostream>
+#include <opencv2/opencv.hpp>
 #include <unordered_set>
 
 #include "jet_functions.h"
 
-
 // Function to convert npp::Image to a host array
-void convertNppImageToHostArray(const npp::ImageCPU_8u_C1 &nppImage, float* h_gray_image) {
-    int width = nppImage.width();
-    int height = nppImage.height();
-    const Npp8u* pSrc = nppImage.data();
-    int srcStep = nppImage.pitch();
+void convertNppImageToHostArray(const npp::ImageCPU_8u_C1 &nppImage,
+                                float *h_gray_image) {
+  int width = nppImage.width();
+  int height = nppImage.height();
+  const Npp8u *pSrc = nppImage.data();
+  int srcStep = nppImage.pitch();
 
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            int srcIdx = y * srcStep + x;
-            h_gray_image[y * width + x] = static_cast<float>(pSrc[srcIdx]) / 255.0f;
-        }
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      int srcIdx = y * srcStep + x;
+      h_gray_image[y * width + x] = static_cast<float>(pSrc[srcIdx]) / 255.0f;
     }
+  }
 }
-void convertMatToImageCPU(const cv::Mat &mat, npp::ImageCPU_8u_C1 &nppImage)
-{
-    // Check if the input Mat is single channel and 8-bit
-    if (mat.channels() != 1 || mat.depth() != CV_8U) {
-        throw std::runtime_error("Input Mat must be a single channel, 8-bit image.");
-    }
+void convertMatToImageCPU(const cv::Mat &mat, npp::ImageCPU_8u_C1 &nppImage) {
+  // Check if the input Mat is single channel and 8-bit
+  if (mat.channels() != 1 || mat.depth() != CV_8U) {
+    throw std::runtime_error(
+        "Input Mat must be a single channel, 8-bit image.");
+  }
 
-    // Create an ImageCPU_8u_C1 object with the same dimensions as the input Mat
-    npp::ImageCPU_8u_C1 tempImage(mat.cols, mat.rows);
+  // Create an ImageCPU_8u_C1 object with the same dimensions as the input Mat
+  npp::ImageCPU_8u_C1 tempImage(mat.cols, mat.rows);
 
-    // Get the data pointer and pitch (step) of the input Mat
-    const Npp8u *matData = mat.data;
-    Npp32s matPitch = static_cast<Npp32s>(mat.step);
+  // Get the data pointer and pitch (step) of the input Mat
+  const Npp8u *matData = mat.data;
+  Npp32s matPitch = static_cast<Npp32s>(mat.step);
 
-    // Get the data pointer and pitch of the ImageCPU_8u_C1 object
-    Npp8u *nppData = tempImage.data();
-    Npp32s nppPitch = static_cast<Npp32s>(tempImage.pitch());
+  // Get the data pointer and pitch of the ImageCPU_8u_C1 object
+  Npp8u *nppData = tempImage.data();
+  Npp32s nppPitch = static_cast<Npp32s>(tempImage.pitch());
 
-    // Copy data from the Mat to the ImageCPU_8u_C1 object, line by line
-    for (int y = 0; y < mat.rows; ++y) {
-        memcpy(nppData + y * nppPitch, matData + y * matPitch, mat.cols * sizeof(Npp8u));
-    }
+  // Copy data from the Mat to the ImageCPU_8u_C1 object, line by line
+  for (int y = 0; y < mat.rows; ++y) {
+    memcpy(nppData + y * nppPitch, matData + y * matPitch,
+           mat.cols * sizeof(Npp8u));
+  }
 
-    // Swap the temporary ImageCPU_8u_C1 object with the output object
-    nppImage.swap(tempImage);
+  // Swap the temporary ImageCPU_8u_C1 object with the output object
+  nppImage.swap(tempImage);
 }
-
 
 bool printfNPPinfo(int argc, char *argv[]) {
   const NppLibraryVersion *libVer = nppGetLibVersion();
@@ -113,91 +114,95 @@ bool printfNPPinfo(int argc, char *argv[]) {
   return bVal;
 }
 
-void processImage(const std::string& inputFilePath, const std::string& outputFilePath) {
-    // Declare a host image object for an 8-bit grayscale image
-    npp::ImageCPU_8u_C1 oHostSrc;
-    cv::Mat grayImage = cv::imread(inputFilePath, cv::IMREAD_GRAYSCALE);
-    
-    if (grayImage.empty()) {
-        std::cerr << "Failed to load image: " << inputFilePath << std::endl;
-        return;
-    }
+void processImage(const std::string &inputFilePath,
+                  const std::string &outputFilePath) {
+  // Declare a host image object for an 8-bit grayscale image
+  npp::ImageCPU_8u_C1 oHostSrc;
+  cv::Mat grayImage = cv::imread(inputFilePath, cv::IMREAD_GRAYSCALE);
 
-    // Declare a device image and copy construct from the host image,
-    // i.e. upload host to device
-    convertMatToImageCPU(grayImage, oHostSrc);
+  if (grayImage.empty()) {
+    std::cerr << "Failed to load image: " << inputFilePath << std::endl;
+    return;
+  }
 
-    int width = oHostSrc.width();
-    int height = oHostSrc.height();
+  // Declare a device image and copy construct from the host image,
+  // i.e. upload host to device
+  convertMatToImageCPU(grayImage, oHostSrc);
 
-    float *h_gray_image = new float[width * height * 3];
-    float *h_rgb_image = new float[width * height * 3];
+  int width = oHostSrc.width();
+  int height = oHostSrc.height();
 
-    // Convert npp::Image to host array
-    convertNppImageToHostArray(oHostSrc, h_gray_image);
+  float *h_gray_image = new float[width * height * 3];
+  float *h_rgb_image = new float[width * height * 3];
 
-    // Apply the Jet colormap
-    apply_jet_colormap_wrapper(h_gray_image, h_rgb_image, width, height);
+  // Convert npp::Image to host array
+  convertNppImageToHostArray(oHostSrc, h_gray_image);
 
-    cv::Mat cvImage(height, width, CV_32FC3, h_rgb_image);
+  // Apply the Jet colormap
+  apply_jet_colormap_wrapper(h_gray_image, h_rgb_image, width, height);
 
-    // Optional: Convert float values to 8-bit unsigned integer values
-    cvImage.convertTo(cvImage, CV_8UC3, 255.0);
+  cv::Mat cvImage(height, width, CV_32FC3, h_rgb_image);
 
-    // Save or display the image
-    cv::imwrite(outputFilePath, cvImage);
+  // Optional: Convert float values to 8-bit unsigned integer values
+  cvImage.convertTo(cvImage, CV_8UC3, 255.0);
 
-    delete[] h_rgb_image;
-    delete[] h_gray_image;
+  // Save or display the image
+  cv::imwrite(outputFilePath, cvImage);
 
-    cvImage.deallocate();
-    grayImage.deallocate();
+  delete[] h_rgb_image;
+  delete[] h_gray_image;
+
+  cvImage.deallocate();
+  grayImage.deallocate();
 }
 
-void processFile(const std::filesystem::directory_entry &entry){
-    std::string inputFilePath = entry.path().string();
-    std::string outputFilePath = inputFilePath.substr(0, inputFilePath.find_last_of('.')) + "_processed.png";
+void processFile(const std::filesystem::directory_entry &entry) {
+  std::string inputFilePath = entry.path().string();
+  std::string outputFilePath =
+      inputFilePath.substr(0, inputFilePath.find_last_of('.')) +
+      "_processed.png";
 
-    try {
-        processImage(inputFilePath, outputFilePath);  // Call to processImage with file paths
-        std::cout << "Saved processed image: " << outputFilePath << std::endl;
-    } catch (npp::Exception &rException) {
-        std::cerr << "Program error! The following exception occurred: \n";
-        std::cerr << rException << std::endl;
-        std::cerr << "Aborting." << std::endl;
-        exit(EXIT_FAILURE);
-    } catch (...) {
-        std::cerr << "Program error! An unknown type of exception occurred. \n";
-        std::cerr << "Aborting." << std::endl;
-        exit(EXIT_FAILURE);
-    }
+  try {
+    processImage(inputFilePath,
+                 outputFilePath);  // Call to processImage with file paths
+    std::cout << "Saved processed image: " << outputFilePath << std::endl;
+  } catch (npp::Exception &rException) {
+    std::cerr << "Program error! The following exception occurred: \n";
+    std::cerr << rException << std::endl;
+    std::cerr << "Aborting." << std::endl;
+    exit(EXIT_FAILURE);
+  } catch (...) {
+    std::cerr << "Program error! An unknown type of exception occurred. \n";
+    std::cerr << "Aborting." << std::endl;
+    exit(EXIT_FAILURE);
+  }
 }
 
 void forEachFile(const std::string &dirPath,
-                 std::function<void(const std::filesystem::directory_entry &)> fileProcessor)
-{
-    // Capture the directory listing once
-    std::vector<std::filesystem::directory_entry> dirListing;
-    for (const auto &entry : std::filesystem::directory_iterator(dirPath)) {
-        if (entry.is_regular_file() && entry.path().extension() == ".png") {
-            dirListing.push_back(entry);
-        }
+                 std::function<void(const std::filesystem::directory_entry &)>
+                     fileProcessor) {
+  // Capture the directory listing once
+  std::vector<std::filesystem::directory_entry> dirListing;
+  for (const auto &entry : std::filesystem::directory_iterator(dirPath)) {
+    if (entry.is_regular_file() && entry.path().extension() == ".png") {
+      dirListing.push_back(entry);
     }
-    // Now work off the static list
-    for (const auto &entry : dirListing) {
-        fileProcessor(entry);
-    }
+  }
+  // Now work off the static list
+  for (const auto &entry : dirListing) {
+    fileProcessor(entry);
+  }
 }
 
 int main(int argc, char *argv[]) {
-    printf("%s Starting...\n\n", argv[0]);
+  printf("%s Starting...\n\n", argv[0]);
 
-    findCudaDevice(argc, (const char **)argv);
+  findCudaDevice(argc, (const char **)argv);
 
-    if (printfNPPinfo(argc, argv) == false) {
-        exit(EXIT_SUCCESS);
-    }
+  if (printfNPPinfo(argc, argv) == false) {
+    exit(EXIT_SUCCESS);
+  }
 
-    forEachFile("./data", processFile);
-    return 0;
+  forEachFile("./data", processFile);
+  return 0;
 }

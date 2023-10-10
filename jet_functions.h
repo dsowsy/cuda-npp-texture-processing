@@ -7,14 +7,17 @@
 extern "C" {
 #endif
 
-void apply_jet_colormap_host(const float* gray_image, float* rgb_image, int width, int height);
+void apply_jet_colormap_host(const float* gray_image, float* rgb_image,
+                             int width, int height);
 
 #ifdef __cplusplus
 }
 #endif
 
-__device__ void jet_colormap(float gray_value, float &r, float &g, float &b);
-__global__ void apply_jet_colormap(const float* gray_image, float* rgb_image, int width, int height);
-void apply_jet_colormap_wrapper(const float* h_gray_image, float* h_rgb_image, int width, int height);
+__device__ void jet_colormap(float gray_value, float& r, float& g, float& b);
+__global__ void apply_jet_colormap(const float* gray_image, float* rgb_image,
+                                   int width, int height);
+void apply_jet_colormap_wrapper(const float* h_gray_image, float* h_rgb_image,
+                                int width, int height);
 
-#endif // JET_FUNCTIONS_H
+#endif  // JET_FUNCTIONS_H
