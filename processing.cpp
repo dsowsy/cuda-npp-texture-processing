@@ -177,16 +177,6 @@ void forEachFile(const std::string &dirPath,
     std::cout << std::endl;  // Move to the next line after processing all files
 }
 
-int main() {
-    forEachFile("/path/to/directory",
-                [](const std::filesystem::directory_entry &entry){
-                    // Your file processing logic here
-                });
-    return 0;
-}
-
-
-
 int main(int argc, char *argv[]) {
     printf("%s Starting...\n\n", argv[0]);
 
@@ -204,29 +194,6 @@ int main(int argc, char *argv[]) {
     */
 
     forEachFile("./data", processFile, handleErrors);
-
-
-    /*
-    for (const auto& entry : std::filesystem::directory_iterator("./data")) {
-        if (entry.is_regular_file()) {
-            std::string inputFilePath = entry.path().string();
-
-            if (!std::filesystem::exists(inputFilePath)) {
-              std::cerr << "File does not exist: " << inputFilePath << std::endl;
-              continue;  // skip to next iteration
-            }
-
-            std::string outputFilePath = inputFilePath.substr(0, inputFilePath.find_last_of('.')) + "_processed.png";
-            processFile(inputFilePath, outputFilePath);
-            cudaDeviceSynchronize();  // Ensure all CUDA operations are complete
-
-            cudaError_t err = cudaGetLastError();
-            if (err != cudaSuccess) {
-              std::cerr << "CUDA Error: " << cudaGetErrorString(err) << " for file: " << inputFilePath << std::endl;
-            }
-        }
-    }
-*/
     return 0;
 }
 
