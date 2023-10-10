@@ -1,2 +1,24 @@
 # cuda-npp-texture-processing
 Image texture processing in CUDA with NPP
+
+# Project description
+
+This project leverages the USC Viterbi Volume 1: Textures image collection from the provided images.zip file. 
+
+The images, originally in TIFF format, have been converted to PNG for easier handling.
+More details about the image collection can be found [here](https://sipi.usc.edu/database/database.php?volume=textures).
+
+1. Initially, all 66 images are loaded into the system as grayscale images using OpenCV's image loading functionality.
+2. The project replicates OpenCV's jet pseudocolor technique through a custom CUDA kernel.
+3. Subsequently, all loaded images are transformed into NPP image objects.
+4. The custom kernel is executed on the GPU, processing all the images.
+5. The pseudocolored images are then transferred back to the host system.
+6. Finally, the processed images are saved back to PNG format using the host's CPU resources.
+
+# Problems encountered
+
+During this project, I ran into a bunch of challenges that really tested my problem-solving skills. One big headache came from using the FreeImage library, which kept throwing exceptions and didn't allow for freeing up memory that was allocated internally. I realized I could just use OpenCV's Mat's as an allocator and then convert the image from OpenCV. I also had to spend some time tweaking the block size parameters to get things right.
+
+On top of that, there wasn't any filtering in place for non-image files, so I ended up re-processing some files that were already done before, which was a bit of a time-waster. At certain points, I bumped into some CUDA errors and had to find ways to work around them to keep things moving along.
+
+I also dived into a bit of an IDE adventure, trying to find a workable setup for profiler and debugging. The batteries included approach with Eclipse was abandoned by NVIDIA; and after realizing this I gave  Visual Studio, Visual Studio Code, and even Ubuntu under Windows Subsystem for Linux (WSL) a shot. It was a bit of a time sink. Nonetheless even with all these hurdles I debugged the problems and got everything working as I have planned.
