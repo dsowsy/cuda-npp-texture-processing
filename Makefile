@@ -356,6 +356,6 @@ testrun: build
 clean:
 	rm -f processing processing.o
 	rm -rf ../../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)/processing
-    rm ./data *processed*
-    
+    	rm ./data/*processed*
+
 clobber: clean
