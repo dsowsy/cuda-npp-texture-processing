@@ -1,5 +1,5 @@
 # cuda-npp-texture-processing
-Image texture processing in CUDA with NPP - Creating a kernel for OpenCV "jet" style pseucolor in CUDA
+Image texture processing in CUDA with NPP - Creating a kernel for OpenCV "jet" style pseudocolor in CUDA
 
   Before                   |   After                   
 :-------------------------:|:-------------------------: 
