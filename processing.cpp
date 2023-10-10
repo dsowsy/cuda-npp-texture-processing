@@ -146,16 +146,6 @@ void processFile(const std::filesystem::directory_entry &entry){
     }
 }
 
-void handleErrors(const std::string &inputFilePath)
-{
-    cudaDeviceSynchronize(); // Ensure all CUDA operations are complete
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess)
-    {
-        std::cerr << "CUDA Error: " << cudaGetErrorString(err) << " for file: " << inputFilePath << std::endl;
-    }
-}
-
 
 void forEachFile(const std::string &dirPath,
                  std::function<void(const std::filesystem::directory_entry &)> fileProcessor)
@@ -193,7 +183,7 @@ int main(int argc, char *argv[]) {
     processFile(inputFilePath, outputFilePath);
     */
 
-    forEachFile("./data", processFile, handleErrors);
+    forEachFile("./data", processFile);
     return 0;
 }
 
